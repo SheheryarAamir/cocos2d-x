@@ -117,6 +117,7 @@ platform/android/CCCommon.cpp \
 platform/android/CCFileUtils.cpp \
 platform/android/CCImage.cpp \
 platform/android/jni/JniHelper.cpp \
+platform/android/jni/Java_org_cocos2dx_lib_Cocos2dxActivity.cpp \
 platform/android/jni/IMEJni.cpp \
 platform/android/jni/MessageJni.cpp \
 platform/android/jni/SensorJni.cpp \
@@ -175,7 +176,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
                     $(LOCAL_PATH)/kazmath/include \
                     $(LOCAL_PATH)/platform/android
 
-
 LOCAL_LDLIBS := -lGLESv2 \
                 -lEGL \
                 -llog \
@@ -185,10 +185,11 @@ LOCAL_WHOLE_STATIC_LIBRARIES := cocos_libpng_static
 LOCAL_WHOLE_STATIC_LIBRARIES += cocos_jpeg_static
 LOCAL_WHOLE_STATIC_LIBRARIES += cocos_libxml2_static
 LOCAL_WHOLE_STATIC_LIBRARIES += cocos_libtiff_static
-
+LOCAL_WHOLE_STATIC_LIBRARIES += scriptingcore-spidermonkey
 
 # define the macro to compile through support/zip_support/ioapi.c                
-LOCAL_CFLAGS := -DUSE_FILE32API
+LOCAL_CFLAGS := -DUSE_FILE32API -DCOCOS2D_JAVASCRIPT
+LOCAL_EXPORT_CFLAGS := -DUSE_FILE32API -DCOCOS2D_JAVASCRIPT
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -196,4 +197,4 @@ $(call import-module,libjpeg)
 $(call import-module,libpng)
 $(call import-module,libxml2)
 $(call import-module,libtiff)
-
+$(call import-module,targets/spidermonkey/common)

@@ -49,12 +49,18 @@ const unsigned int    kDisableTag = 0x3;
 //
 // CCMenuItem
 //
-CCMenuItem * CCMenuItem::itemWithTarget(CCObject *rec, SEL_MenuHandler selector)
+
+CCMenuItem* CCMenuItem::itemWithTarget(CCObject *rec, SEL_MenuHandler selector)
 {
     return CCMenuItem::create(rec, selector);
 }
 
-CCMenuItem * CCMenuItem::create(CCObject *rec, SEL_MenuHandler selector)
+CCMenuItem* CCMenuItem::create()
+{
+    return CCMenuItem::create(NULL, NULL);
+}
+
+CCMenuItem* CCMenuItem::create(CCObject *rec, SEL_MenuHandler selector)
 {
     CCMenuItem *pRet = new CCMenuItem();
     pRet->initWithTarget(rec, selector);
@@ -113,9 +119,9 @@ void CCMenuItem::activate()
             (m_pListener->*m_pfnSelector)(this);
         }
         
-        if (m_nScriptHandler)
+        if (1)
         {
-            CCScriptEngineManager::sharedManager()->getScriptEngine()->executeFunctionWithIntegerData(m_nScriptHandler, getTag());
+            CCScriptEngineManager::sharedManager()->getScriptEngine()->executeFunctionWithIntegerData(m_nScriptHandler, kCCMenuItemActivated, (CCNode *)this);
         }
     }
 }
@@ -151,6 +157,7 @@ void CCMenuItem::setTarget(CCObject *rec, SEL_MenuHandler selector)
 //
 //CCMenuItemLabel
 //
+
 const ccColor3B& CCMenuItemLabel::getDisabledColor()
 {
     return m_tDisabledColor;
@@ -312,6 +319,7 @@ const ccColor3B& CCMenuItemLabel::getColor()
 //
 //CCMenuItemAtlasFont
 //
+
 CCMenuItemAtlasFont * CCMenuItemAtlasFont::itemWithString(const char *value, const char *charMapFile, int itemWidth, int itemHeight, char startCharMap)
 {
     return CCMenuItemAtlasFont::create(value, charMapFile, itemWidth, itemHeight, startCharMap);
@@ -350,6 +358,7 @@ bool CCMenuItemAtlasFont::initWithString(const char *value, const char *charMapF
 //
 //CCMenuItemFont
 //
+
 void CCMenuItemFont::setFontSize(unsigned int s)
 {
     _fontSize = s;
@@ -448,6 +457,7 @@ const char* CCMenuItemFont::fontNameObj()
 //
 //CCMenuItemSprite
 //
+
 CCNode * CCMenuItemSprite::getNormalImage()
 {
     return m_pNormalImage;
@@ -527,6 +537,7 @@ void CCMenuItemSprite::setDisabledImage(CCNode* pImage)
 //
 //CCMenuItemSprite - CCRGBAProtocol protocol
 //
+
 void CCMenuItemSprite::setOpacity(GLubyte opacity)
 {
     dynamic_cast<CCRGBAProtocol*>(m_pNormalImage)->setOpacity(opacity);
@@ -694,6 +705,10 @@ void CCMenuItemSprite::updateImagesVisibility()
     }
 }
 
+///
+/// CCMenuItemImage
+///
+
 CCMenuItemImage* CCMenuItemImage::node()
 {
     return CCMenuItemImage::create();
@@ -796,21 +811,23 @@ bool CCMenuItemImage::initWithNormalImage(const char *normalImage, const char *s
 //
 void CCMenuItemImage::setNormalSpriteFrame(CCSpriteFrame * frame)
 {
-    setNormalImage(CCSprite::create(frame));
+    setNormalImage(CCSprite::createWithSpriteFrame(frame));
 }
 
 void CCMenuItemImage::setSelectedSpriteFrame(CCSpriteFrame * frame)
 {
-    setSelectedImage(CCSprite::create(frame));
+    setSelectedImage(CCSprite::createWithSpriteFrame(frame));
 }
 
 void CCMenuItemImage::setDisabledSpriteFrame(CCSpriteFrame * frame)
 {
-    setDisabledImage(CCSprite::create(frame));
+    setDisabledImage(CCSprite::createWithSpriteFrame(frame));
 }
+
 //
 // MenuItemToggle
 //
+
 void CCMenuItemToggle::setSubItems(CCArray* var)
 {
     CC_SAFE_RETAIN(var);

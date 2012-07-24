@@ -1,0 +1,192 @@
+definitions:
+  # the names of the functions - we use this to generate the code and to register the functions in
+  # the javascript class
+  ifunction: "js_${generator.prefix}_${class_name}_${func_name}"
+  sfunction: "js_${generator.prefix}_${class_name}_${func_name}"
+  constructor: "js_${generator.prefix}_${class_name}_constructor"
+conversions:
+  # some times you want to use a special native type when converting from spidermonkey to native
+  # the most common case would be from JS-boolean to bool. Using "bool" will fail here since we
+  # pass the address to the conversion method, and a JSBool is defined as an integer in spidermonkey
+  native_types:
+    bool: "JSBool"
+    float: "double"
+    "unsigned char": "uint16_t"
+  to_native:
+    # jsval to int
+    int: "JS_ValueToInt32(cx, ${in_value}, &${out_value})"
+    "unsigned int": "JS_ValueToECMAUint32(cx, ${in_value}, &${out_value})"
+    "unsigned char": "JS_ValueToUint16(cx, ${in_value}, &${out_value})"
+    # jsval has to be a TypedArray, a UInt32Array with 2 elements
+    "long long": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = JSVAL_TO_OBJECT(${in_value});
+      ${($level + 1) * '\t'}if (js_IsTypedArray(tmp) && JS_GetTypedArrayByteLength(tmp) == 8) {
+      ${($level + 2) * '\t'}uint32_t *data = (uint32_t *)JS_GetTypedArrayData(tmp);
+      ${($level + 2) * '\t'}${out_value} = (long long)(*data);
+      ${($level + 1) * '\t'}}
+      ${$level * '\t'}} while (0)
+    "std::string": |
+      do {
+      ${($level + 1) * '\t'}JSString *tmp = JS_ValueToString(cx, ${in_value});
+      ${($level + 1) * '\t'}${out_value} = JS_EncodeString(cx, tmp);
+      ${$level * '\t'}} while (0)
+    "const char*": |
+      do {
+      ${($level + 1) * '\t'}JSString *tmp = JS_ValueToString(cx, ${in_value});
+      ${($level + 1) * '\t'}${out_value} = JS_EncodeString(cx, tmp);
+      ${$level * '\t'}} while (0)
+    bool: "JS_ValueToBoolean(cx, ${in_value}, &${out_value})"
+    float: "JS_ValueToNumber(cx, ${in_value}, &${out_value})"
+    double: "${out_value} = JSVAL_TO_DOUBLE(${in_value})"
+    object: |
+      do {
+      ${($level + 1) * '\t'}js_proxy_t *proxy;
+      ${($level + 1) * '\t'}JSObject *tmpObj = JSVAL_TO_OBJECT(${in_value});
+      ${($level + 1) * '\t'}JS_GET_NATIVE_PROXY(proxy, tmpObj);
+      ${($level + 1) * '\t'}${out_value} = (${ntype})(proxy ? proxy->ptr : NULL);
+      ${($level + 1) * '\t'}TEST_NATIVE_OBJECT(cx, ${out_value})
+      ${($level + 0) * '\t'}} while (0)
+    "CCPoint": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp;
+      ${($level + 1) * '\t'}if (!JS_ValueToObject(cx, ${in_value}, &tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!js_IsTypedArray(tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!JS_GetTypedArrayByteLength(tmp) == sizeof(float) * 2) return JS_FALSE;
+      ${($level + 1) * '\t'}float *arr = (float *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}${out_value} = cocos2d::CCPoint(arr[0], arr[1]);
+      ${($level + 0) * '\t'}} while (0)
+    "CCRect": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp;
+      ${($level + 1) * '\t'}if (!JS_ValueToObject(cx, ${in_value}, &tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!js_IsTypedArray(tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!JS_GetTypedArrayByteLength(tmp) == sizeof(float) * 4) return JS_FALSE;
+      ${($level + 1) * '\t'}float *arr = (float *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}${out_value} = cocos2d::CCRect(arr[0], arr[1], arr[2], arr[3]);
+      ${($level + 0) * '\t'}} while (0)
+    "CCSize": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp;
+      ${($level + 1) * '\t'}if (!JS_ValueToObject(cx, ${in_value}, &tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!js_IsTypedArray(tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!JS_GetTypedArrayByteLength(tmp) == sizeof(float) * 2) return JS_FALSE;
+      ${($level + 1) * '\t'}float *arr = (float *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}${out_value} = cocos2d::CCSize(arr[0], arr[1]);
+      ${($level + 0) * '\t'}} while (0)
+    "const ccColor4B": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp;
+      ${($level + 1) * '\t'}if (!JS_ValueToObject(cx, ${in_value}, &tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!js_IsTypedArray(tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!JS_GetTypedArrayByteLength(tmp) == sizeof(GLubyte) * 4) return JS_FALSE;
+      ${($level + 1) * '\t'}GLubyte *arr = (GLubyte *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}${out_value} = cocos2d::ccc4(arr[0], arr[1], arr[2], arr[3]);
+      ${($level + 0) * '\t'}} while (0)
+    "const ccColor3B": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp;
+      ${($level + 1) * '\t'}if (!JS_ValueToObject(cx, ${in_value}, &tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!js_IsTypedArray(tmp)) return JS_FALSE;
+      ${($level + 1) * '\t'}if (!JS_GetTypedArrayByteLength(tmp) == sizeof(GLubyte) * 3) return JS_FALSE;
+      ${($level + 1) * '\t'}GLubyte *arr = (GLubyte *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}${out_value} = cocos2d::ccc3(arr[0], arr[1], arr[2]);
+      ${($level + 0) * '\t'}} while (0)
+
+
+  from_native:
+    # int to jsval
+    int: "JS_NewNumberValue(cx, ${in_value}, &${out_value})"
+    "unsigned int": "JS_NewNumberValue(cx, ${in_value}, &${out_value})"
+    "long long": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = js_CreateTypedArray(cx, js::TypedArray::TYPE_UINT32, 2);
+      ${($level + 1) * '\t'}uint32_t *data = (uint32_t *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}data[0] = ((uint32_t *)(&${in_value}))[0];
+      ${($level + 1) * '\t'}data[1] = ((uint32_t *)(&${in_value}))[1];
+      ${($level + 1) * '\t'}${out_value} = OBJECT_TO_JSVAL(tmp);
+      ${$level * '\t'}} while (0)
+    "std::string": |
+      do {
+      ${($level + 1) * '\t'}JSString *str = JS_NewStringCopyZ(cx, ${in_value}.c_str());
+      ${($level + 1) * '\t'}${out_value} = STRING_TO_JSVAL(str);
+      ${$level * '\t'}} while (0)
+    "const char*": |
+      do {
+      ${($level + 1) * '\t'}JSString *str = JS_NewStringCopyZ(cx, ${in_value});
+      ${($level + 1) * '\t'}${out_value} = STRING_TO_JSVAL(str);
+      ${$level * '\t'}} while (0)
+    bool: "${out_value} = BOOLEAN_TO_JSVAL(${in_value})"
+    float: "JS_NewNumberValue(cx, ${in_value}, &${out_value})"
+    double: "JS_NewNumberValue(cx, ${in_value}, &${out_value})"
+    object: |
+      do {
+      ${($level + 1) * '\t'}if (${in_value}) {
+      ${($level + 2) * '\t'}js_proxy_t *p;
+      ${($level + 2) * '\t'}JS_GET_PROXY(p, ${in_value});
+      ${($level + 2) * '\t'}if (p) {
+      ${($level + 3) * '\t'}${out_value} = OBJECT_TO_JSVAL(p->obj);
+      ${($level + 2) * '\t'}} else {
+      ${($level + 3) * '\t'}// create a new js obj of that class
+      ${($level + 3) * '\t'}TypeTest<${ntype.replace("*", "")}> t;
+      ${($level + 3) * '\t'}js_type_class_t *p;
+      ${($level + 3) * '\t'}uint32_t typeId = t.s_id();
+      ${($level + 3) * '\t'}HASH_FIND_INT(_js_global_type_ht, &typeId, p);
+      ${($level + 3) * '\t'}assert(p);
+      ${($level + 3) * '\t'}JSObject *_tmp = JS_NewObject(cx, p->jsclass, p->proto, p->parentProto);
+      ${($level + 3) * '\t'}#ifdef COCOS2D_VERSION
+      ${($level + 3) * '\t'}JS_AddObjectRoot(cx, &_tmp);      
+      ${($level + 3) * '\t'}#endif
+      ${($level + 3) * '\t'}${out_value} = OBJECT_TO_JSVAL(_tmp);
+      ${($level + 3) * '\t'}js_proxy_t *pp;
+      ${($level + 3) * '\t'}JS_NEW_PROXY(pp, ${in_value}, _tmp);
+      ${($level + 2) * '\t'}}
+      ${($level + 1) * '\t'}} else {
+      ${($level + 2) * '\t'}${out_value} = JSVAL_NULL;
+      ${($level + 1) * '\t'}}
+      ${($level) * '\t'}} while (0)
+    "CCPoint": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = js_CreateTypedArray(cx, js::TypedArray::TYPE_FLOAT32, 2);
+      ${($level + 1) * '\t'}float *data = (float *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}data[0] = ${in_value}.x;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.y;
+      ${($level + 1) * '\t'}${out_value} = OBJECT_TO_JSVAL(tmp);
+      ${($level + 0) * '\t'}} while (0)
+    "CCRect": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = js_CreateTypedArray(cx, js::TypedArray::TYPE_FLOAT32, 4);
+      ${($level + 1) * '\t'}float *data = (float *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}data[0] = ${in_value}.origin.x;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.origin.y;
+      ${($level + 1) * '\t'}data[2] = ${in_value}.size.width;
+      ${($level + 1) * '\t'}data[3] = ${in_value}.size.height;
+      ${($level + 1) * '\t'}${out_value} = OBJECT_TO_JSVAL(tmp);
+      ${($level + 0) * '\t'}} while (0)
+    "CCSize": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = js_CreateTypedArray(cx, js::TypedArray::TYPE_FLOAT32, 2);
+      ${($level + 1) * '\t'}float *data = (float *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}data[0] = ${in_value}.width;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.height;
+      ${($level + 1) * '\t'}${out_value} = OBJECT_TO_JSVAL(tmp);
+      ${($level + 0) * '\t'}} while (0)
+    "const ccColor4B": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = js_CreateTypedArray(cx, js::TypedArray::TYPE_UINT8, 4);
+      ${($level + 1) * '\t'}GLubyte *data = (GLubyte *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}data[0] = ${in_value}.r;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.g;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.b;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.a;
+      ${($level + 1) * '\t'}${out_value} = OBJECT_TO_JSVAL(tmp);
+      ${($level + 0) * '\t'}} while (0)
+    "const ccColor3B": |
+      do {
+      ${($level + 1) * '\t'}JSObject *tmp = js_CreateTypedArray(cx, js::TypedArray::TYPE_UINT8, 3);
+      ${($level + 1) * '\t'}GLubyte *data = (GLubyte *)JS_GetTypedArrayData(tmp);
+      ${($level + 1) * '\t'}data[0] = ${in_value}.r;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.g;
+      ${($level + 1) * '\t'}data[1] = ${in_value}.b;
+      ${($level + 1) * '\t'}${out_value} = OBJECT_TO_JSVAL(tmp);
+      ${($level + 0) * '\t'}} while (0)

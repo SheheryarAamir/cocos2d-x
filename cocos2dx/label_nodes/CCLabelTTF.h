@@ -139,6 +139,7 @@ protected:
     std::string m_string;
 };
 
+
 // end of GUI group
 /// @}
 /// @}
