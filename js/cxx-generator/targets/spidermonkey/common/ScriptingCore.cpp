@@ -281,8 +281,7 @@ JSBool ScriptingCore::runScript(const char *path)
     dpath += path;
     const char *realPath = futil->fullPathFromRelativePath(dpath.c_str());
 #else
-    const char *realPath = NULL;
-    futil->fullPathFromRelativePath(path);
+    const char *realPath = futil->fullPathFromRelativePath(path);
 #endif
 
     if (!realPath) {

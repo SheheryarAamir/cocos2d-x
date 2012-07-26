@@ -7,13 +7,92 @@
 //
 
 #include <iostream>
-#include "cocos2d.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "ScriptingCore.h"
-#include "cocos2d_generated.hpp"
-#include "cocos_denshion_generated.hpp"
+#include "cocos2d.h"
 
-using namespace cocos2d;
+#ifdef ANDROID
+#include <android/log.h>
+#include <android/asset_manager.h>
+#include <jni/JniHelper.h>
+#endif
 
+#ifdef ANDROID
+#define  LOG_TAG    "ScriptingCore.cpp"
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
+#else
+#define  LOGD(...) js_log(__VA_ARGS__)
+#endif
+
+js_proxy_t *_native_js_global_ht = NULL;
+js_proxy_t *_js_native_global_ht = NULL;
+js_type_class_t *_js_global_type_ht = NULL;
+char *_js_log_buf = NULL;
+
+static void executeJSFunctionFromReservedSpot(JSContext *cx, JSObject *obj, 
+                                              jsval &dataVal, jsval &retval) {
+
+    //  if(p->jsclass->JSCLASS_HAS_RESERVED_SLOTS(1)) {
+    jsval func = JS_GetReservedSlot(obj, 0);
+    
+    if(func == JSVAL_VOID) { return; }
+    jsval thisObj = JS_GetReservedSlot(obj, 1);
+    if(thisObj == JSVAL_VOID) {
+        JS_CallFunctionValue(cx, obj, func, 1, &dataVal, &retval);
+    } else {
+        assert(!JSVAL_IS_PRIMITIVE(thisObj));
+        JS_CallFunctionValue(cx, JSVAL_TO_OBJECT(thisObj), func, 1, &dataVal, &retval);
+    }        
+    //  }
+}
+
+void ScriptingCore::executeJSFunctionWithThisObj(jsval thisObj, jsval callback,
+                                                 jsval data) {
+    jsval retval;
+    if(callback != JSVAL_VOID || thisObj != JSVAL_VOID) {
+        JS_CallFunctionValue(cx, JSVAL_TO_OBJECT(thisObj), callback, 1, &data, &retval);
+    }
+}
+
+
+static void executeJSFunctionWithName(JSContext *cx, JSObject *obj, 
+                                      const char *funcName, jsval &dataVal,
+                                      jsval &retval) {
+    JSBool hasAction;
+    jsval temp_retval;
+	
+    if (JS_HasProperty(cx, obj, funcName, &hasAction) && hasAction) {
+        if(!JS_GetProperty(cx, obj, funcName, &temp_retval)) {
+            return;
+        }
+        if(temp_retval == JSVAL_VOID) {
+            return;
+        }
+        JS_CallFunctionName(cx, obj, funcName, 
+                            1, &dataVal, &retval);
+    }
+    
+}
+
+void js_log(const char *format, ...) {
+    if (_js_log_buf == NULL) {
+        _js_log_buf = (char *)calloc(sizeof(char), 257);
+    }
+    va_list vl;
+    va_start(vl, format);
+    int len = vsnprintf(_js_log_buf, 256, format, vl);
+    va_end(vl);
+    if (len) {
+#ifdef ANDROID
+        __android_log_print(ANDROID_LOG_DEBUG, "js_log", _js_log_buf);
+#else
+        fprintf(stderr, "JS: %s\n", _js_log_buf);
+#endif
+    }
+}
 
 static JSClass global_class = {
     "global", JSCLASS_GLOBAL_FLAGS,
@@ -31,210 +110,164 @@ ScriptingCore::ScriptingCore()
     JS_SetErrorReporter(this->cx, ScriptingCore::reportError);
     global = JS_NewCompartmentAndGlobalObject(cx, &global_class, NULL);
     if (!JS_InitStandardClasses(cx, global)) {
-        CCLog("js error");
+        js_log("error initializing the VM");
     }
-    // create the cocos namespace
-    JSObject *cocos = JS_NewObject(cx, NULL, NULL, NULL);
-    jsval cocosVal = OBJECT_TO_JSVAL(cocos);
-    JS_SetProperty(cx, global, "cc", &cocosVal);
-
-    // register the internal classes
-    S_CCPoint::jsCreateClass(this->cx, cocos, "Point");
-    S_CCSize::jsCreateClass(this->cx, cocos, "Size");
-    S_CCRect::jsCreateClass(this->cx, cocos, "Rect");
-    S__ccGridSize::jsCreateClass(this->cx, cocos, "GridSize");
-    S_CCSet::jsCreateClass(this->cx, cocos, "Set");
-    S_CCTouch::jsCreateClass(this->cx, cocos, "Touch");
-    S_CCDirector::jsCreateClass(this->cx, cocos, "Director");
-    S_CCNode::jsCreateClass(this->cx, cocos, "Node");
-    S_CCTextureAtlas::jsCreateClass(this->cx, cocos, "TextureAtlas");
-    S_CCSpriteBatchNode::jsCreateClass(this->cx, cocos, "SpriteBatchNode");
-    S_CCScene::jsCreateClass(this->cx, cocos, "Scene");
-    S_CCLayer::jsCreateClass(this->cx, cocos, "Layer");
-    S_CCSprite::jsCreateClass(this->cx, cocos, "Sprite");
-    S_CCRenderTexture::jsCreateClass(this->cx, cocos, "RenderTexture");
-    S_CCMenu::jsCreateClass(this->cx, cocos, "Menu");
-    S_CCMenuItem::jsCreateClass(this->cx, cocos, "MenuItem");
-    S_CCMenuItemLabel::jsCreateClass(this->cx, cocos, "MenuItemLabel");
-    S_CCMenuItemSprite::jsCreateClass(this->cx, cocos, "MenuItemSprite");
-    S_CCMenuItemImage::jsCreateClass(this->cx, cocos, "MenuItemImage");
-    S_CCSpriteFrame::jsCreateClass(this->cx, cocos, "SpriteFrame");
-    S_CCSpriteFrameCache::jsCreateClass(this->cx, cocos, "SpriteFrameCache");
-    S_CCAnimation::jsCreateClass(this->cx, cocos, "Animation");
-    S_CCAction::jsCreateClass(this->cx, cocos, "Action");
-    S_CCActionInterval::jsCreateClass(this->cx, cocos, "ActionInterval");
-    S_CCFiniteTimeAction::jsCreateClass(this->cx, cocos, "FiniteTimeAction");
-    S_CCActionInstant::jsCreateClass(this->cx, cocos, "ActionInstant");
-    S_CCDelayTime::jsCreateClass(this->cx, cocos, "DelayTime");
-    S_CCAnimate::jsCreateClass(this->cx, cocos, "Animate");
-    S_CCMoveTo::jsCreateClass(this->cx, cocos, "MoveTo");
-    S_CCMoveBy::jsCreateClass(this->cx, cocos, "MoveBy");
-    S_CCRotateBy::jsCreateClass(this->cx, cocos, "RotateBy");
-    S_CCRotateTo::jsCreateClass(this->cx, cocos, "RotateTo");
-    S_CCActionEase::jsCreateClass(this->cx, cocos, "ActionEase");
-    S_CCEaseRateAction::jsCreateClass(this->cx, cocos, "EaseRateAction");
-    S_CCEaseIn::jsCreateClass(this->cx, cocos, "EaseIn");
-    S_CCEaseOut::jsCreateClass(this->cx, cocos, "EaseOut");
-    S_CCEaseInOut::jsCreateClass(this->cx, cocos, "EaseInOut");
-    S_CCEaseBackInOut::jsCreateClass(this->cx, cocos, "EaseBackInOut");
-    S_CCEaseBackOut::jsCreateClass(this->cx, cocos, "EaseBackOut");
-    S_CCEaseElasticIn::jsCreateClass(this->cx, cocos, "EaseElasticIn");
-    S_CCEaseElastic::jsCreateClass(this->cx, cocos, "EaseElastic");
-    S_CCEaseElasticOut::jsCreateClass(this->cx, cocos, "EaseElasticOut");
-    S_CCEaseElasticInOut::jsCreateClass(this->cx, cocos, "EaseElasticInOut");
-    S_CCEaseBounce::jsCreateClass(this->cx, cocos, "EaseBounce");
-    S_CCEaseBounceIn::jsCreateClass(this->cx, cocos, "EaseBounceIn");
-    S_CCEaseBounceInOut::jsCreateClass(this->cx, cocos, "EaseBounceInOut");
-    S_CCEaseBackIn::jsCreateClass(this->cx, cocos, "EaseBackIn");
-    S_CCEaseBounceOut::jsCreateClass(this->cx, cocos, "EaseBounceOut");
-    S_CCEaseExponentialIn::jsCreateClass(this->cx, cocos, "EaseExponentialIn");
-    S_CCEaseExponentialOut::jsCreateClass(this->cx, cocos, "EaseExponentialOut");
-    S_CCEaseExponentialInOut::jsCreateClass(this->cx, cocos, "EaseExponentialInOut");
-    S_CCEaseSineIn::jsCreateClass(this->cx, cocos, "EaseSineIn");
-    S_CCEaseSineOut::jsCreateClass(this->cx, cocos, "EaseSineOut");
-    S_CCEaseSineInOut::jsCreateClass(this->cx, cocos, "EaseSineInOut");
-    S_CCRepeatForever::jsCreateClass(this->cx, cocos, "RepeatForever");
-    S_CCSequence::jsCreateClass(this->cx, cocos, "Sequence");
-    S_CCLabelTTF::jsCreateClass(this->cx, cocos, "LabelTTF");
-    S_CCParticleSystem::jsCreateClass(this->cx, cocos, "ParticleSystem");
-    S_CCFileUtils::jsCreateClass(this->cx, cocos, "FileUtils");
-    S_CCTexture2D::jsCreateClass(this->cx, cocos, "Texture2D");
-    S_CCTextureCache::jsCreateClass(this->cx, cocos, "TextureCache");
-    S_CCParallaxNode::jsCreateClass(this->cx, cocos, "ParallaxNode");
-    S_CCTintBy::jsCreateClass(this->cx, cocos, "TintBy");
-    S_CCTintTo::jsCreateClass(this->cx, cocos, "TintTo");
-    S_CCLayerColor::jsCreateClass(this->cx, cocos, "LayerColor");
-    S_CCBlink::jsCreateClass(this->cx, cocos, "Blink");
-    S_CCSpeed::jsCreateClass(this->cx, cocos, "Speed");
-    S_CCGridAction::jsCreateClass(this->cx, cocos, "GridAction");
-    S_CCGrid3DAction::jsCreateClass(this->cx, cocos, "Grid3DAction");
-    S_CCWaves3D::jsCreateClass(this->cx, cocos, "Waves3D");
-    S_CCTransitionScene::jsCreateClass(this->cx, cocos, "TransitionScene");
-    S_CCTransitionSceneOriented::jsCreateClass(this->cx, cocos, "TransitionSceneOriented");
-    S_CCTransitionRotoZoom::jsCreateClass(this->cx, cocos, "TransitionRotoZoom");
-    S_CCTransitionFadeDown::jsCreateClass(this->cx, cocos, "TransitionFadeDown");
-    S_CCTransitionJumpZoom::jsCreateClass(this->cx, cocos, "TransitionJumpZoom");
-    S_CCTransitionMoveInL::jsCreateClass(this->cx, cocos, "TransitionMoveInL");
-    S_CCTransitionMoveInR::jsCreateClass(this->cx, cocos, "TransitionMoveInR");
-    S_CCTransitionMoveInT::jsCreateClass(this->cx, cocos, "TransitionMoveInT");
-    S_CCTransitionMoveInB::jsCreateClass(this->cx, cocos, "TransitionMoveInB");
-    S_CCTransitionSlideInL::jsCreateClass(this->cx, cocos, "TransitionSlideInL");
-    S_CCTransitionSlideInR::jsCreateClass(this->cx, cocos, "TransitionSlideInR");
-    S_CCTransitionSlideInB::jsCreateClass(this->cx, cocos, "TransitionSlideInB");
-    S_CCTransitionSlideInT::jsCreateClass(this->cx, cocos, "TransitionSlideInT");
-    S_CCTransitionShrinkGrow::jsCreateClass(this->cx, cocos, "TransitionShrinkGrow");
-    S_CCTransitionFlipX::jsCreateClass(this->cx, cocos, "TransitionFlipX");
-    S_CCTransitionFlipY::jsCreateClass(this->cx, cocos, "TransitionFlipY");
-    S_CCTransitionFlipAngular::jsCreateClass(this->cx, cocos, "TransitionFlipAngular");
-    S_CCTransitionZoomFlipX::jsCreateClass(this->cx, cocos, "TransitionZoomFlipX");
-    S_CCTransitionZoomFlipY::jsCreateClass(this->cx, cocos, "TransitionZoomFlipY");
-    S_CCTransitionZoomFlipAngular::jsCreateClass(this->cx, cocos, "TransitionZoomFlipAngular");
-    S_CCTransitionFade::jsCreateClass(this->cx, cocos, "TransitionFade");
-    S_CCTransitionCrossFade::jsCreateClass(this->cx, cocos, "TransitionCrossFade");
-    S_CCTransitionTurnOffTiles::jsCreateClass(this->cx, cocos, "TransitionTurnOffTiles");
-    S_CCTransitionSplitCols::jsCreateClass(this->cx, cocos, "TransitionSplitCols");
-    S_CCTransitionSplitRows::jsCreateClass(this->cx, cocos, "TransitionSplitRows");
-    S_CCTransitionFadeTR::jsCreateClass(this->cx, cocos, "TransitionFadeTR");
-    S_CCTransitionFadeBL::jsCreateClass(this->cx, cocos, "TransitionFadeBL");
-    S_CCTransitionFadeUp::jsCreateClass(this->cx, cocos, "TransitionFadeUp");
-    S_CCFadeOutBLTiles::jsCreateClass(this->cx, cocos, "FadeOutBLTiles");
-    S_CCProgressFromTo::jsCreateClass(this->cx, cocos, "ProgressFromTo");
-    S_CCFadeOutUpTiles::jsCreateClass(this->cx, cocos, "FadeOutUpTiles");
-    S_CCAnimationCache::jsCreateClass(this->cx, cocos, "AnimationCache");
-    S_CCPlace::jsCreateClass(this->cx, cocos, "Place");
-    S_CCLabelBMFont::jsCreateClass(this->cx, cocos, "LabelBMFont");
-    S_CCReverseTime::jsCreateClass(this->cx, cocos, "ReverseTime");
-    S_CCFadeOutTRTiles::jsCreateClass(this->cx, cocos, "FadeOutTRTiles");
-    S_CCCamera::jsCreateClass(this->cx, cocos, "Camera");
-    S_CCProgressTo::jsCreateClass(this->cx, cocos, "ProgressTo");
-    S_CCWavesTiles3D::jsCreateClass(this->cx, cocos, "WavesTiles3D");
-    S_CCMotionStreak::jsCreateClass(this->cx, cocos, "MotionStreak");
-    S_CCTransitionProgressRadialCCW::jsCreateClass(this->cx, cocos, "TransitionRadialProgressCCW");
-    S_CCFadeOutDownTiles::jsCreateClass(this->cx, cocos, "FadeOutDownTiles");
-    S_CCTurnOffTiles::jsCreateClass(this->cx, cocos, "TurnOffTiles");
-    S_CCDeccelAmplitude::jsCreateClass(this->cx, cocos, "DeccelAmplitude");
-    S_CCProgressTimer::jsCreateClass(this->cx, cocos, "ProgressTimer");
-    S_CCReuseGrid::jsCreateClass(this->cx, cocos, "ReuseGrid");
-    S_CCStopGrid::jsCreateClass(this->cx, cocos, "StopGrid");
-    S_CCTwirl::jsCreateClass(this->cx, cocos, "Twirl");
-    S_CCShakyTiles3D::jsCreateClass(this->cx, cocos, "ShakyTiles3D");
-    S_CCTransitionProgressRadialCW::jsCreateClass(this->cx, cocos, "TransitionProgressRadialCW");
-    S_CCAtlasNode::jsCreateClass(this->cx, cocos, "AtlasNode");
-    S_CCWaves::jsCreateClass(this->cx, cocos, "Waves");
-    S_CCShow::jsCreateClass(this->cx, cocos, "Show");
-    S_CCOrbitCamera::jsCreateClass(this->cx, cocos, "OrbitCamera");
-    S_CCShatteredTiles3D::jsCreateClass(this->cx, cocos, "ShatteredTiles3D");
-    S_CCHide::jsCreateClass(this->cx, cocos, "Hide");
-    S_CCToggleVisibility::jsCreateClass(this->cx, cocos, "ToggleVisibility");
-    S_CCActionCamera::jsCreateClass(this->cx, cocos, "ActionCamera");
-    S_CCShuffleTiles::jsCreateClass(this->cx, cocos, "ShuffleTiles");
-    S_CCLayerGradient::jsCreateClass(this->cx, cocos, "LayerGradient");
-    S_CCFlipX::jsCreateClass(this->cx, cocos, "FlipX");
-    S_CCRepeat::jsCreateClass(this->cx, cocos, "Repeat");
-    S_CCFlipY::jsCreateClass(this->cx, cocos, "FlipY");
-    S_CCBezierBy::jsCreateClass(this->cx, cocos, "BezierBy");
-    S_CCPageTurn3D::jsCreateClass(this->cx, cocos, "PageTurn3D");
-    S_CCLens3D::jsCreateClass(this->cx, cocos, "Lens3D");
-    S_CCRipple3D::jsCreateClass(this->cx, cocos, "Ripple3D");
-    S_CCApplication::jsCreateClass(this->cx, cocos, "Application");
-    S_CCFlipX3D::jsCreateClass(this->cx, cocos, "FlipX3D");
-    S_CCJumpTo::jsCreateClass(this->cx, cocos, "JumpTo");
-    S_CCTransitionPageTurn::jsCreateClass(this->cx, cocos, "TransitionPageTurn");
-    S_CCFlipY3D::jsCreateClass(this->cx, cocos, "FlipY3D");
-    S_CCLiquid::jsCreateClass(this->cx, cocos, "Liquid");
-    S_CCTiledGrid3DAction::jsCreateClass(this->cx, cocos, "TiledGrid3DAction");
-    S_CCJumpBy::jsCreateClass(this->cx, cocos, "JumpBy");
-    S_CCFollow::jsCreateClass(this->cx, cocos, "Follow");
-    S_CCSkewBy::jsCreateClass(this->cx, cocos, "SkewBy");
-    S_CCAccelDeccelAmplitude::jsCreateClass(this->cx, cocos, "AccelDeccelAmplitude");
-    S_CCLabelAtlas::jsCreateClass(this->cx, cocos, "LabelAtlas");
-    S_CCAccelAmplitude::jsCreateClass(this->cx, cocos, "AccelAmplitude");
-    S_CCSkewTo::jsCreateClass(this->cx, cocos, "SkewTo");
-    S_CCShaky3D::jsCreateClass(this->cx, cocos, "Shaky3D");
-    S_CCSplitCols::jsCreateClass(this->cx, cocos, "SplitCols");
-    S_CCFadeOut::jsCreateClass(this->cx, cocos, "FadeOut");
-    S_CCTileMapAtlas::jsCreateClass(this->cx, cocos, "TileMapAtlas");
-    S_CCFadeTo::jsCreateClass(this->cx, cocos, "FadeTo");
-    S_CCJumpTiles3D::jsCreateClass(this->cx, cocos, "JumpTiles3D");
-    S_CCFadeIn::jsCreateClass(this->cx, cocos, "FadeIn");
-    S_CCSplitRows::jsCreateClass(this->cx, cocos, "SplitRows");
-    S_CCScaleBy::jsCreateClass(this->cx, cocos, "ScaleBy");
-    S_CCScaleTo::jsCreateClass(this->cx, cocos, "ScaleTo");
-    S_CCBezierTo::jsCreateClass(this->cx, cocos, "BezierTo");
-    S_CCTMXTiledMap::jsCreateClass(this->cx, cocos, "TMXTiledMap");
-    S_CCTMXLayer::jsCreateClass(this->cx, cocos, "TMXLayer");
-
-    S_SimpleAudioEngine::jsCreateClass(this->cx, cocos, "SimpleAudioEngine");
 
     // register some global functions
-    JS_DefineFunction(this->cx, global, "require", ScriptingCore::executeScript, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-    JS_DefineFunction(this->cx, cocos, "log", ScriptingCore::log, 0, JSPROP_READONLY | JSPROP_PERMANENT);
-    JS_DefineFunction(this->cx, cocos, "executeScript", ScriptingCore::executeScript, 1, JSPROP_READONLY | JSPROP_PERMANENT);
-    JS_DefineFunction(this->cx, cocos, "addGCRootObject", ScriptingCore::addRootJS, 1, JSPROP_READONLY | JSPROP_PERMANENT);
-    JS_DefineFunction(this->cx, cocos, "removeGCRootObject", ScriptingCore::removeRootJS, 1, JSPROP_READONLY | JSPROP_PERMANENT);
-    JS_DefineFunction(this->cx, cocos, "forceGC", ScriptingCore::forceGC, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+    JS_DefineFunction(this->cx, global, "require", ScriptingCore::executeScript, 1, JSPROP_READONLY | JSPROP_PERMANENT);
+    JS_DefineFunction(this->cx, global, "log", ScriptingCore::log, 0, JSPROP_READONLY | JSPROP_PERMANENT);
+    JS_DefineFunction(this->cx, global, "executeScript", ScriptingCore::executeScript, 1, JSPROP_READONLY | JSPROP_PERMANENT);
+    JS_DefineFunction(this->cx, global, "forceGC", ScriptingCore::forceGC, 0, JSPROP_READONLY | JSPROP_PERMANENT);
 }
 
-bool ScriptingCore::evalString(const char *string, jsval *outVal)
+void ScriptingCore::string_report(jsval val) {
+    if (JSVAL_IS_NULL(val)) {
+        LOGD("val : (JSVAL_IS_NULL(val)");
+        // return 1;
+    } else if ((JSVAL_IS_BOOLEAN(val)) &&
+               (JS_FALSE == (JSVAL_TO_BOOLEAN(val)))) {
+        LOGD("val : (return value is JS_FALSE");
+        // return 1;
+    } else if (JSVAL_IS_STRING(val)) {
+        JSString *str = JS_ValueToString(this->getGlobalContext(), val);
+        if (NULL == str) {
+            LOGD("val : return string is NULL");
+        } else {
+            LOGD("val : return string =\n%s\n",
+                 JS_EncodeString(this->getGlobalContext(), str));
+        }
+    } else if (JSVAL_IS_NUMBER(val)) {
+        double number;
+        if (JS_FALSE ==
+            JS_ValueToNumber(this->getGlobalContext(), val, &number)) {
+            LOGD("val : return number could not be converted");
+        } else {
+            LOGD("val : return number =\n%f", number);
+        }
+    }
+}
+
+JSBool ScriptingCore::evalString(const char *string, jsval *outVal, const char *filename)
 {
     jsval rval;
-    JSString *str;
-    JSBool ok;
-    const char *filename = "noname";
-    uint32_t lineno = 0;
+    const char *fname = (filename ? filename : "noname");
+    uint32_t lineno = 1;
     if (outVal == NULL) {
         outVal = &rval;
     }
-    ok = JS_EvaluateScript(cx, global, string, strlen(string), filename, lineno, outVal);
-    if (ok == JS_FALSE) {
-        CCLog("error evaluating script:\n%s", string);
+
+    JSBool evaluatedOK = JS_EvaluateScript(cx, global,
+                                           string, strlen(string),
+                                           fname, lineno, outVal);
+
+    if (JS_FALSE == evaluatedOK) {
+        LOGD("evaluatedOK == JS_FALSE)");
+    } else {
+        this->string_report(*outVal);
     }
-    str = JS_ValueToString(cx, rval);
-    return ok;
+
+    return evaluatedOK;
 }
 
-void ScriptingCore::runScript(const char *path)
+#ifdef ANDROID
+
+static unsigned long
+fileutils_read_into_new_memory(const char* relativepath,
+                               unsigned char** content) {
+    *content = NULL;
+
+    AAssetManager* assetmanager =
+        JniHelper::getAssetManager();
+    if (NULL == assetmanager) {
+        LOGD("assetmanager : is NULL");
+        return 0;
+    }
+
+    // read asset data
+    AAsset* asset =
+        AAssetManager_open(assetmanager,
+                           relativepath,
+                           AASSET_MODE_UNKNOWN);
+    if (NULL == asset) {
+        LOGD("asset : is NULL");
+        return 0; 
+    }
+
+    off_t size = AAsset_getLength(asset);
+    LOGD("size = %d ", size);
+
+    unsigned char* buf =
+        (unsigned char*) malloc((sizeof(unsigned char)) * (size+1));
+    if (NULL == buf) {
+        LOGD("memory allocation failed");
+        AAsset_close(asset);
+        return 0;
+    }
+
+    int bytesread = AAsset_read(asset, buf, size);
+    LOGD("bytesread = %d ", bytesread);
+    buf[bytesread] = '\0';
+
+    AAsset_close(asset);
+
+    *content = (unsigned char*) buf;
+    return bytesread;
+}
+
+JSBool ScriptingCore::runScript(const char *path)
 {
+    LOGD("ScriptingCore::runScript(%s)", path);
+
+    if (NULL == path) {
+        return JS_FALSE;
+    }
+
+    unsigned char* content = NULL;
+    unsigned long contentsize = 0;
+
+    contentsize = fileutils_read_into_new_memory(path, &content);
+
+    if (NULL == content) {
+        LOGD("(NULL == content)");
+        return JS_FALSE;
+    }
+
+    if (contentsize <= 0) {
+        LOGD("(contentsize <= 0)");
+        free(content);
+        return JS_FALSE;
+    }
+
+    jsval rval;
+    JSBool ret = this->evalString((const char *)content, &rval, path);
+    free(content);
+
+    LOGD("... ScriptingCore::runScript(%s) done successfully.", path);
+
+    return ret;
+}
+
+#else
+
+static size_t readFileInMemory(const char *path, unsigned char **buff) {
+    struct stat buf;
+    int file = open(path, O_RDONLY);
+    long readBytes = -1;
+    if (file) {
+        if (fstat(file, &buf) == 0) {
+            *buff = (unsigned char *)calloc(buf.st_size + 1, 1);
+            if (*buff) {
+                readBytes = read(file, *buff, buf.st_size);
+            }
+        }
+    }
+    close(file);
+    return readBytes;
+}
+
+JSBool ScriptingCore::runScript(const char *path)
+{
+    cocos2d::CCFileUtils *futil = cocos2d::CCFileUtils::sharedFileUtils();
 #ifdef DEBUG
     /**
      * dpath should point to the parent directory of the "JS" folder. If this is
@@ -243,27 +276,234 @@ void ScriptingCore::runScript(const char *path)
      * modifying those scripts and reloading from the simulator (no recompiling/
      * relaunching)
      */
-//    std::string dpath("/Users/rabarca/Desktop/testjs/testjs/");
+//  std::string dpath("/Users/rabarca/Desktop/testjs/testjs/");
     std::string dpath("");
     dpath += path;
-    const char *realPath = CCFileUtils::sharedFileUtils()->fullPathFromRelativePath(dpath.c_str());
+    const char *realPath = futil->fullPathFromRelativePath(dpath.c_str());
 #else
-    const char *realPath = CCFileUtils::sharedFileUtils()->fullPathFromRelativePath(path);
+    const char *realPath = NULL;
+    futil->fullPathFromRelativePath(path);
 #endif
-    const char* content = CCString::createWithContentsOfFile(realPath)->getCString();
-    if (content && strlen(content) > 0) {
-        JSBool ok;
-        jsval rval;
-        ok = JS_EvaluateScript(this->cx, this->global, (char *)content, strlen(content), path, 1, &rval);
-        if (ok == JS_FALSE) {
-            CCLog("error evaluating script:\n%s", content);
-        }
+
+    if (!realPath) {
+        return JS_FALSE;
     }
+
+    unsigned char *content = NULL;
+    unsigned long contentSize = 0;
+
+    contentSize = readFileInMemory(realPath, &content);
+    JSBool ret = JS_FALSE;
+    if (content && contentSize) {
+        jsval rval;
+        ret = this->evalString((const char *)content, &rval, path);
+        free(content);
+    }
+    return ret;
 }
+
+#endif
 
 ScriptingCore::~ScriptingCore()
 {
     JS_DestroyContext(cx);
     JS_DestroyRuntime(rt);
     JS_ShutDown();
+    if (_js_log_buf) {
+        free(_js_log_buf);
+        _js_log_buf = NULL;
+    }
+}
+
+int ScriptingCore::executeFunctionWithIntegerData(int nHandler, int data, CCNode *self) {
+    js_proxy_t * p;
+    JS_GET_PROXY(p, self);
+    
+    if (!p) return 0;
+    
+    jsval retval;
+    jsval dataVal = INT_TO_JSVAL(1);
+    js_proxy_t *proxy;
+    JS_GET_PROXY(proxy, self);
+    
+    std::string funcName = "";
+    if(data == kCCNodeOnEnter) {
+        executeJSFunctionWithName(this->cx, p->obj, "onEnter", dataVal, retval);
+    } else if(data == kCCNodeOnExit) {
+        executeJSFunctionWithName(this->cx, p->obj, "onExit", dataVal, retval);
+    } else if(data == kCCMenuItemActivated) {
+		dataVal = (proxy ? OBJECT_TO_JSVAL(proxy->obj) : JSVAL_NULL);
+        executeJSFunctionFromReservedSpot(this->cx, p->obj, dataVal, retval);
+    }
+    
+    
+    
+    return 1;
+}
+
+
+int ScriptingCore::executeFunctionWithFloatData(int nHandler, float data, CCNode *self) {
+    
+    
+    js_proxy_t * p;
+    JS_GET_PROXY(p, self);
+    
+    if (!p) return 0;
+    
+    jsval retval;
+    jsval dataVal = DOUBLE_TO_JSVAL(data);
+    
+    std::string funcName = "";
+    
+    executeJSFunctionWithName(this->cx, p->obj, "update", dataVal, retval);
+    
+    //    if(data == kCCNodeOnEnter) {
+    //        executeJSFunctionWithName(this->cx, p, "onEnter", dataVal, retval);
+    //    } else if(data == kCCNodeOnExit) {
+    //        executeJSFunctionWithName(this->cx, p, "onExit", dataVal, retval);
+    //    } else if(data == kCCMenuItemActivated) {
+    //        executeJSFunctionFromReservedSpot(this->cx, p, dataVal, retval);
+    //    }
+    
+    return 1;
+}
+
+static void getTouchesFuncName(int eventType, std::string &funcName) {
+    switch(eventType) {
+        case CCTOUCHBEGAN:
+            funcName = "onTouchesBegan";
+            break;
+        case CCTOUCHENDED:
+            funcName = "onTouchesEnded";
+            break;
+        case CCTOUCHMOVED:
+            funcName = "onTouchesMoved";
+            break;
+        case CCTOUCHCANCELLED:
+            funcName = "onTouchesCancelled";
+            break;
+    }
+    
+}
+
+static void getTouchFuncName(int eventType, std::string &funcName) {
+    switch(eventType) {
+        case CCTOUCHBEGAN:
+            funcName = "onTouchBegan";
+            break;
+        case CCTOUCHENDED:
+            funcName = "onTouchEnded";
+            break;
+        case CCTOUCHMOVED:
+            funcName = "onTouchMoved";
+            break;
+        case CCTOUCHCANCELLED:
+            funcName = "onTouchCancelled";
+            break;
+    }
+    
+}
+
+
+static void getJSTouchObject(JSContext *cx, CCTouch *x, jsval &jsret) {    
+    js_type_class_t *classType;
+    TypeTest<cocos2d::CCTouch> t;
+    uint32_t typeId = t.s_id();
+    HASH_FIND_INT(_js_global_type_ht, &typeId, classType);
+    assert(classType);
+    JSObject *_tmp = JS_NewObject(cx, classType->jsclass, classType->proto, classType->parentProto);
+    js_proxy_t *proxy;
+    JS_NEW_PROXY(proxy, x, _tmp);
+    jsret = OBJECT_TO_JSVAL(_tmp);
+}
+
+
+int ScriptingCore::executeTouchesEvent(int nHandler, int eventType, 
+                                       CCSet *pTouches, CCNode *self) {
+    
+    jsval retval;
+    
+    std::string funcName;
+    getTouchesFuncName(eventType, funcName);
+    
+    JSObject *jsretArr = JS_NewArrayObject(this->cx, 0, NULL);
+    int count = 0;
+    for(CCSetIterator it = pTouches->begin(); it != pTouches->end(); ++it, ++count) {
+        jsval jsret;
+        getJSTouchObject(this->cx, (CCTouch *) *it, jsret);
+        if(!JS_SetElement(this->cx, jsretArr, count, &jsret)) {
+            break;
+        }
+    }
+    
+    js_proxy_t *lP;
+    JS_GET_PROXY(lP, self);
+    assert(lP);
+    
+    jsval jsretArrVal = OBJECT_TO_JSVAL(jsretArr);
+    executeJSFunctionWithName(this->cx, lP->obj, funcName.c_str(), jsretArrVal, retval);
+    
+    return 1;
+}
+
+int ScriptingCore::executeCustomTouchesEvent(int eventType, 
+                                       CCSet *pTouches, JSObject *obj)
+{
+    
+    jsval retval;
+    std::string funcName;
+    getTouchesFuncName(eventType, funcName);
+    
+    JSObject *jsretArr = JS_NewArrayObject(this->cx, 0, NULL);
+    int count = 0;
+    for(CCSetIterator it = pTouches->begin(); it != pTouches->end(); ++it, ++count) {
+        jsval jsret;
+        getJSTouchObject(this->cx, (CCTouch *) *it, jsret);
+        if(!JS_SetElement(this->cx, jsretArr, count, &jsret)) {
+            break;
+        }
+    }
+    
+    jsval jsretArrVal = OBJECT_TO_JSVAL(jsretArr);
+    executeJSFunctionWithName(this->cx, obj, funcName.c_str(), jsretArrVal, retval);
+    
+    return 1;
+}
+
+
+int ScriptingCore::executeCustomTouchEvent(int eventType, 
+                                           CCTouch *pTouch, JSObject *obj) {
+    jsval retval;
+    std::string funcName;
+    getTouchFuncName(eventType, funcName);
+    
+    jsval jsTouch;
+    getJSTouchObject(this->cx, pTouch, jsTouch);
+    
+    executeJSFunctionWithName(this->cx, obj, funcName.c_str(), jsTouch, retval);
+    return 1;
+    
+}  
+
+
+int ScriptingCore::executeCustomTouchEvent(int eventType, 
+                                           CCTouch *pTouch, JSObject *obj,
+                                           jsval &retval) {
+
+    std::string funcName;
+    getTouchFuncName(eventType, funcName);
+    
+    jsval jsTouch;
+    getJSTouchObject(this->cx, pTouch, jsTouch);
+
+    executeJSFunctionWithName(this->cx, obj, funcName.c_str(), jsTouch, retval);
+    return 1;
+    
+}  
+
+
+int ScriptingCore::executeSchedule(int nHandler, float dt, CCNode *self) {
+    
+    executeFunctionWithFloatData(nHandler, dt, self);
+    return 1;
 }
