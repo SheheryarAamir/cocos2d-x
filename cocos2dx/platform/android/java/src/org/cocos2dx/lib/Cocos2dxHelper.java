@@ -40,6 +40,7 @@ public class Cocos2dxHelper {
 
 	private static Cocos2dxMusic sCocos2dMusic;
 	private static Cocos2dxSound sCocos2dSound;
+	private static AssetManager sAssetManager;
 	private static Cocos2dxAccelerometer sCocos2dxAccelerometer;
 	private static boolean sAccelerometerEnabled;
 	private static String sPackageName;
@@ -62,6 +63,7 @@ public class Cocos2dxHelper {
 		Cocos2dxHelper.sCocos2dxAccelerometer = new Cocos2dxAccelerometer(pContext);
 		Cocos2dxHelper.sCocos2dMusic = new Cocos2dxMusic(pContext);
 		Cocos2dxHelper.sCocos2dSound = new Cocos2dxSound(pContext);
+		Cocos2dxHelper.sAssetManager = pContext.getAssets();
 		Cocos2dxBitmap.setContext(pContext);
 	}
 
@@ -86,6 +88,10 @@ public class Cocos2dxHelper {
 
 	public static String getCurrentLanguage() {
 		return Locale.getDefault().getLanguage();
+	}
+
+	public static AssetManager getAssetManager() {
+		return Cocos2dxHelper.sAssetManager;
 	}
 
 
