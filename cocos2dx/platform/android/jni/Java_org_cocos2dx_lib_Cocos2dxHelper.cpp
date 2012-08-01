@@ -11,7 +11,7 @@
 #define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
 
 extern "C" {
-    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetAssetManager(JNIEnv* env, jobject thiz, jobject java_assetmanager) {
+    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetAssetManager(JNIEnv* env, jclass clazz, jobject java_assetmanager) {
         LOGD("nativeSetAssetManager");
         
         AAssetManager* assetmanager = AAssetManager_fromJava(env, java_assetmanager);
@@ -25,7 +25,7 @@ extern "C" {
         LOGD("... assetmanager set successfully.");
     }
     
-    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetPaths(JNIEnv*  env, jobject thiz, jstring apkPath) {
+    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetPaths(JNIEnv*  env, jclass clazz, jstring apkPath) {
         const char* str = env->GetStringUTFChars(apkPath, NULL);
 
         cocos2d::CCFileUtils::sharedFileUtils()->setResourcePath(str);
