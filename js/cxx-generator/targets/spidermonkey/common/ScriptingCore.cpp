@@ -268,20 +268,19 @@ static size_t readFileInMemory(const char *path, unsigned char **buff) {
 JSBool ScriptingCore::runScript(const char *path)
 {
     cocos2d::CCFileUtils *futil = cocos2d::CCFileUtils::sharedFileUtils();
+	const char *realPath = NULL;
 #ifdef DEBUG
-    /**
-     * dpath should point to the parent directory of the "JS" folder. If this is
-     * set to "" (as it is now) then it will take the scripts from the app bundle.
-     * By setting the absolute path you can iterate the development only by
-     * modifying those scripts and reloading from the simulator (no recompiling/
-     * relaunching)
-     */
-//  std::string dpath("/Users/rabarca/Desktop/testjs/testjs/");
-    std::string dpath("");
-    dpath += path;
-    const char *realPath = futil->fullPathFromRelativePath(dpath.c_str());
+    // In debug mode, allow absolute paths (the game view controller will specify one if it wants to reload the game script)
+	if(path[0] == '/')
+	{
+		realPath = path;
+	}
+	else
+	{
+		realPath = futil->fullPathFromRelativePath(path);
+	}
 #else
-    const char *realPath = futil->fullPathFromRelativePath(path);
+    realPath = futil->fullPathFromRelativePath(path);
 #endif
 
     if (!realPath) {
