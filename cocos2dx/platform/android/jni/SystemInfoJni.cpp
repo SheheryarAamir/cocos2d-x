@@ -36,6 +36,8 @@ THE SOFTWARE.
 #define  LOGD(...) 
 #endif
 
+#define  CLASS_NAME "org/cocos2dx/lib/Cocos2dxHelper"
+
 using namespace cocos2d;
 
 extern "C"
@@ -45,7 +47,7 @@ extern "C"
         JniMethodInfo t;
 
         if (JniHelper::getStaticMethodInfo(t, 
-                        "org/cocos2dx/lib/Cocos2dxActivity",
+                        CLASS_NAME,
                         "getCocos2dxPackageName",
                         "()Ljava/lang/String;"))
         {
@@ -71,7 +73,7 @@ extern "C"
         JniMethodInfo t;
 
         if (JniHelper::getStaticMethodInfo(t
-            , "org/cocos2dx/lib/Cocos2dxActivity"
+            , CLASS_NAME
             , "getCurrentLanguage"
             , "()Ljava/lang/String;"))
         {

@@ -37,6 +37,8 @@ THE SOFTWARE.
 #define  LOGD(...) 
 #endif
 
+#define  CLASS_NAME "org/cocos2dx/lib/Cocos2dxHelper"
+
 using namespace cocos2d;
 
 extern "C"
@@ -64,7 +66,7 @@ extern "C"
         JniMethodInfo t;
 
         if (JniHelper::getStaticMethodInfo(t, 
-                                     "org/cocos2dx/lib/Cocos2dxActivity",
+                                     CLASS_NAME,
                                      "enableAccelerometer",
                                      "()V"))
         {
@@ -78,7 +80,7 @@ extern "C"
         JniMethodInfo t;
 
         if (JniHelper::getStaticMethodInfo(t, 
-            "org/cocos2dx/lib/Cocos2dxActivity",
+            CLASS_NAME,
             "disableAccelerometer",
             "()V"))
         {
