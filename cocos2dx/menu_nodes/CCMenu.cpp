@@ -90,10 +90,10 @@ CCMenu * CCMenu::create(CCMenuItem* item, ...)
 
 CCMenu* CCMenu::menuWithArray(CCArray* pArrayOfItems)
 {
-    return CCMenu::create(pArrayOfItems);
+    return CCMenu::createWithArray(pArrayOfItems);
 }
 
-CCMenu* CCMenu::create(CCArray* pArrayOfItems)
+CCMenu* CCMenu::createWithArray(CCArray* pArrayOfItems)
 {
     CCMenu *pRet = new CCMenu();
     if (pRet && pRet->initWithArray(pArrayOfItems))
@@ -645,8 +645,7 @@ const ccColor3B& CCMenu::getColor(void)
 
 CCMenuItem* CCMenu::itemForTouch(CCTouch *touch)
 {
-    CCPoint touchLocation = touch->locationInView();
-    touchLocation = CCDirector::sharedDirector()->convertToGL(touchLocation);
+    CCPoint touchLocation = touch->getLocation();
 
     if (m_pChildren && m_pChildren->count() > 0)
     {

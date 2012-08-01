@@ -161,9 +161,7 @@ void CCTimer::update(float dt)
                 {
                     (m_pTarget->*m_pfnSelector)(m_fElapsed);
                 }
-#ifdef COCOS2D_JAVASCRIPT
-                CCScriptEngineManager::sharedManager()->getScriptEngine()->executeSchedule(m_nScriptHandler, m_fElapsed, (CCNode *)this);
-#else
+#ifndef COCOS2D_JAVASCRIPT
                 if (m_nScriptHandler)
                 {
                     CCScriptEngineManager::sharedManager()->getScriptEngine()->executeSchedule(m_nScriptHandler, m_fElapsed);
@@ -183,9 +181,7 @@ void CCTimer::update(float dt)
                     {
                         (m_pTarget->*m_pfnSelector)(m_fElapsed);
                     }
-#ifdef COCOS2D_JAVASCRIPT
-                    CCScriptEngineManager::sharedManager()->getScriptEngine()->executeSchedule(m_nScriptHandler, m_fElapsed, (CCNode *)this);
-#else
+#ifndef COCOS2D_JAVASCRIPT
                     if (m_nScriptHandler)
                     {
                         CCScriptEngineManager::sharedManager()->getScriptEngine()->executeSchedule(m_nScriptHandler, m_fElapsed);
@@ -204,9 +200,7 @@ void CCTimer::update(float dt)
                     {
                         (m_pTarget->*m_pfnSelector)(m_fElapsed);
                     }
-#ifdef COCOS2D_JAVASCRIPT
-                    CCScriptEngineManager::sharedManager()->getScriptEngine()->executeSchedule(m_nScriptHandler, m_fElapsed, (CCNode *)this);
-#else
+#ifndef COCOS2D_JAVASCRIPT
                     if (m_nScriptHandler)
                     {
                         CCScriptEngineManager::sharedManager()->getScriptEngine()->executeSchedule(m_nScriptHandler, m_fElapsed);
@@ -620,7 +614,7 @@ unsigned int CCScheduler::scheduleScriptFunc(unsigned int nHandler, float fInter
     CCSchedulerScriptHandlerEntry* pEntry = CCSchedulerScriptHandlerEntry::entryWithHandler(nHandler, fInterval, bPaused);
     if (!m_pScriptHandlerEntries)
     {
-        m_pScriptHandlerEntries = CCArray::create(20);
+        m_pScriptHandlerEntries = CCArray::createWithCapacity(20);
         m_pScriptHandlerEntries->retain();
     }
     m_pScriptHandlerEntries->addObject(pEntry);
