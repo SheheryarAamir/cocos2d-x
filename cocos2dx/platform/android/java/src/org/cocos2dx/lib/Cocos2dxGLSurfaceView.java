@@ -269,7 +269,9 @@ public class Cocos2dxGLSurfaceView extends GLSurfaceView {
 	 */
 	@Override
 	protected void onSizeChanged(final int pNewSurfaceWidth, final int pNewSurfaceHeight, final int pOldSurfaceWidth, final int pOldSurfaceHeight) {
-		this.mCocos2dxRenderer.setScreenWidthAndHeight(pNewSurfaceWidth, pNewSurfaceHeight);
+		if(!this.isInEditMode()) {
+			this.mCocos2dxRenderer.setScreenWidthAndHeight(pNewSurfaceWidth, pNewSurfaceHeight);
+		}
 	}
 
 	@Override
