@@ -1024,7 +1024,7 @@ bool CCSprite::isFrameDisplayed(CCSpriteFrame *pFrame)
 
 CCSpriteFrame* CCSprite::displayFrame(void)
 {
-    return CCSpriteFrame::create(m_pobTexture,
+    return CCSpriteFrame::createWithTexture(m_pobTexture,
                                            CC_RECT_POINTS_TO_PIXELS(m_obRect),
                                            m_bRectRotated,
                                            m_obUnflippedOffsetPositionFromCenter,

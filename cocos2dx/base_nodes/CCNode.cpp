@@ -356,12 +356,12 @@ void CCNode::setAnchorPoint(const CCPoint& point)
 }
 
 /// contentSize getter
-CCSize CCNode::getContentSize()
+const CCSize & CCNode::getContentSize()
 {
     return m_tContentSize;
 }
 
-void CCNode::setContentSize(CCSize size)
+void CCNode::setContentSize(const CCSize & size)
 {
     if( ! CCSize::CCSizeEqualToSize(size, m_tContentSize) ) 
     {
@@ -466,7 +466,7 @@ const char* CCNode::description()
 // lazy allocs
 void CCNode::childrenAlloc(void)
 {
-    m_pChildren = CCArray::create(4);
+    m_pChildren = CCArray::createWithCapacity(4);
     m_pChildren->retain();
 }
 
@@ -1102,14 +1102,12 @@ CCPoint CCNode::convertToWindowSpace(const CCPoint& nodePoint)
 // convenience methods which take a CCTouch instead of CCPoint
 CCPoint CCNode::convertTouchToNodeSpace(CCTouch *touch)
 {
-    CCPoint point = touch->locationInView();
-    point = CCDirector::sharedDirector()->convertToGL(point);
+    CCPoint point = touch->getLocation();
     return this->convertToNodeSpace(point);
 }
 CCPoint CCNode::convertTouchToNodeSpaceAR(CCTouch *touch)
 {
-    CCPoint point = touch->locationInView();
-    point = CCDirector::sharedDirector()->convertToGL(point);
+    CCPoint point = touch->getLocation();
     return this->convertToNodeSpaceAR(point);
 }
 
