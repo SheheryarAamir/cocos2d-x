@@ -26,6 +26,7 @@ LOCAL_LDLIBS    += -landroid
 
 endif
 
+LOCAL_WHOLE_STATIC_LIBRARIES := scriptingcore-spidermonkey
 
 LOCAL_EXPORT_C_INCLUDES := $(LOCAL_PATH)/../include
 
@@ -33,5 +34,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/../include \
                     $(LOCAL_PATH)/../../cocos2dx \
                     $(LOCAL_PATH)/../../cocos2dx/include \
                     $(LOCAL_PATH)/../../cocos2dx/platform/android
-            
+
 include $(BUILD_STATIC_LIBRARY)
+
+$(call import-module,targets/spidermonkey/common)

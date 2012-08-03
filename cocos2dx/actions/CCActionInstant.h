@@ -28,6 +28,7 @@ THE SOFTWARE.
 #define __CCINSTANT_ACTION_H__
 
 #include <string>
+#include <typeinfo>
 #include "CCAction.h"
 
 NS_CC_BEGIN
@@ -342,14 +343,20 @@ protected:
 O means Object.
 @since v0.99.5
 */
+#ifdef COCOS2D_JAVASCRIPT
 class CC_DLL CCCallFuncO : public CCCallFunc, public TypeInfo
+#else
+class CC_DLL CCCallFuncO : public CCCallFunc
+#endif
 {
 public:
     CCCallFuncO();
     virtual ~CCCallFuncO();
+#ifdef COCOS2D_JAVASCRIPT
     virtual uint32_t getClassTypeInfo() {
         return reinterpret_cast<int>(typeid(cocos2d::CCCallFunc).name());
     }
+#endif
     /** creates the action with the callback 
     @deprecated: This interface will be deprecated sooner or later.
     typedef void (CCObject::*SEL_CallFuncO)(CCObject*);
