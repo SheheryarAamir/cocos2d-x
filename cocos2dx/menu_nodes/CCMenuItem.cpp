@@ -851,7 +851,7 @@ CCMenuItemToggle * CCMenuItemToggle::itemWithTarget(CCObject* target, SEL_MenuHa
     return pRet;
 }
 
-CCMenuItemToggle * CCMenuItemToggle::createWithTarget(CCObject* target, SEL_MenuHandler selector, CCMenuItem* item, ...)
+CCMenuItemToggle * CCMenuItemToggle::create(CCObject* target, SEL_MenuHandler selector, CCMenuItem* item, ...)
 {
     va_list args;
     va_start(args, item);
