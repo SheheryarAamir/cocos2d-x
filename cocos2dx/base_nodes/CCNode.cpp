@@ -347,7 +347,7 @@ const CCPoint& CCNode::getAnchorPoint()
 
 void CCNode::setAnchorPoint(const CCPoint& point)
 {
-    if( ! CCPoint::CCPointEqualToPoint(point, m_tAnchorPoint) ) 
+    if( ! point.equals(m_tAnchorPoint))
     {
         m_tAnchorPoint = point;
         m_tAnchorPointInPoints = ccp( m_tContentSize.width * m_tAnchorPoint.x, m_tContentSize.height * m_tAnchorPoint.y );
@@ -363,7 +363,7 @@ const CCSize & CCNode::getContentSize()
 
 void CCNode::setContentSize(const CCSize & size)
 {
-    if( ! CCSize::CCSizeEqualToSize(size, m_tContentSize) ) 
+    if( ! size.equals(m_tContentSize))
     {
         m_tContentSize = size;
 
@@ -1010,7 +1010,7 @@ CCAffineTransform CCNode::nodeToParentTransform(void)
 
         // optimization:
         // inline anchor point calculation if skew is not needed
-        if (! needsSkewMatrix && !CCPoint::CCPointEqualToPoint(m_tAnchorPointInPoints, CCPointZero)) 
+        if (! needsSkewMatrix && !m_tAnchorPointInPoints.equals(CCPointZero))
         {
             x += c * -m_tAnchorPointInPoints.x * m_fScaleX + -s * -m_tAnchorPointInPoints.y * m_fScaleY;
             y += s * -m_tAnchorPointInPoints.x * m_fScaleX +  c * -m_tAnchorPointInPoints.y * m_fScaleY;
@@ -1032,7 +1032,7 @@ CCAffineTransform CCNode::nodeToParentTransform(void)
             m_tTransform = CCAffineTransformConcat(skewMatrix, m_tTransform);
 
             // adjust anchor point
-            if (! CCPoint::CCPointEqualToPoint(m_tAnchorPointInPoints, CCPointZero))
+            if (!m_tAnchorPointInPoints.equals(CCPointZero))
             {
                 m_tTransform = CCAffineTransformTranslate(m_tTransform, -m_tAnchorPointInPoints.x, -m_tAnchorPointInPoints.y);
             }
