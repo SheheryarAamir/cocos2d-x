@@ -12,24 +12,24 @@
 
 extern "C" {
     void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetAssetManager(JNIEnv* env, jobject thiz, jobject java_assetmanager) {
-        LOGD("nativeSetAssetManager");
-        
         AAssetManager* assetmanager = AAssetManager_fromJava(env, java_assetmanager);
-        if (NULL == assetmanager) {
-            LOGD("assetmanager : is NULL");
+        if (assetmanager == NULL) {
+            LOGD("assetmanager == NULL");
             return;
         }
         
         cocos2d::JniHelper::setAssetManager(assetmanager);
-        
-        LOGD("... assetmanager set successfully.");
     }
     
-    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetPaths(JNIEnv*  env, jobject thiz, jstring apkPath) {
-        const char* str = env->GetStringUTFChars(apkPath, NULL);
+    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetApkPath(JNIEnv*  env, jobject thiz, jstring apkPath) {
+        const char* apkPathChars = env->GetStringUTFChars(apkPath, NULL);
+        cocos2d::CCFileUtils::sharedFileUtils()->setResourcePath(apkPathChars);
+        env->ReleaseStringUTFChars(apkPath, apkPathChars);
+    }
 
-        cocos2d::CCFileUtils::sharedFileUtils()->setResourcePath(str);
-
-        env->ReleaseStringUTFChars(apkPath, str);
+    void Java_org_cocos2dx_lib_Cocos2dxHelper_nativeSetExternalAssetPath(JNIEnv*  env, jobject thiz, jstring externalAssetPath) {
+        const char* externalAssetPathChars = env->GetStringUTFChars(externalAssetPath, NULL);
+        cocos2d::JniHelper::setExternalAssetPath(externalAssetPathChars);
+        env->ReleaseStringUTFChars(externalAssetPath, externalAssetPathChars);
     }
 }

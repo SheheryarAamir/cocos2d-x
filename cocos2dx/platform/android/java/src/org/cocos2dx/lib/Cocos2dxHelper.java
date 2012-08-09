@@ -28,6 +28,7 @@ import java.util.Locale;
 import android.content.Context;
 import android.content.pm.ApplicationInfo;
 import android.content.res.AssetManager;
+import android.os.Environment;
 
 public class Cocos2dxHelper {
 	// ===========================================================
@@ -57,7 +58,8 @@ public class Cocos2dxHelper {
 		Cocos2dxHelper.sCocos2dxHelperListener = pCocos2dxHelperListener;
 
 		Cocos2dxHelper.sPackageName = applicationInfo .packageName;
-		Cocos2dxHelper.nativeSetPaths(applicationInfo.sourceDir);
+		Cocos2dxHelper.nativeSetApkPath(applicationInfo.sourceDir);
+		Cocos2dxHelper.nativeSetExternalAssetPath(Cocos2dxHelper.getAbsolutePathOnExternalStorage(applicationInfo, "assets/"));
 		Cocos2dxHelper.nativeSetAssetManager(pContext.getAssets());
 
 		Cocos2dxHelper.sCocos2dxAccelerometer = new Cocos2dxAccelerometer(pContext);
@@ -79,8 +81,9 @@ public class Cocos2dxHelper {
 	// Methods
 	// ===========================================================
 
-	private static native void nativeSetPaths(String apkPath);
-	private static native void nativeSetAssetManager(AssetManager am);
+	private static native void nativeSetApkPath(final String pApkPath);
+	private static native void nativeSetExternalAssetPath(final String pExternalAssetPath);
+	private static native void nativeSetAssetManager(final AssetManager pAssetManager);
 
 	public static String getCocos2dxPackageName() {
 		return Cocos2dxHelper.sPackageName;
@@ -106,12 +109,12 @@ public class Cocos2dxHelper {
 	}
 
 
-	public static void preloadBackgroundMusic(final String path) {
-		Cocos2dxHelper.sCocos2dMusic.preloadBackgroundMusic(path);
+	public static void preloadBackgroundMusic(final String pPath) {
+		Cocos2dxHelper.sCocos2dMusic.preloadBackgroundMusic(pPath);
 	}
 
-	public static void playBackgroundMusic(final String path, final boolean isLoop) {
-		Cocos2dxHelper.sCocos2dMusic.playBackgroundMusic(path, isLoop);
+	public static void playBackgroundMusic(final String pPath, final boolean isLoop) {
+		Cocos2dxHelper.sCocos2dMusic.playBackgroundMusic(pPath, isLoop);
 	}
 
 	public static void resumeBackgroundMusic() {
@@ -217,6 +220,10 @@ public class Cocos2dxHelper {
 
 	private static void showDialog(final String pTitle, final String pMessage) {
 		Cocos2dxHelper.sCocos2dxHelperListener.showDialog(pTitle, pMessage);
+	}
+
+	private static String getAbsolutePathOnExternalStorage(final ApplicationInfo pApplicationInfo, final String pPath) {
+		return Environment.getExternalStorageDirectory() + "/Android/data/" + pApplicationInfo.packageName + "/files/" + pPath;
 	}
 
 	// ===========================================================

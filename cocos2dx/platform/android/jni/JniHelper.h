@@ -45,6 +45,8 @@ public:
     static void setJavaVM(JavaVM *javaVM);
     static AAssetManager* getAssetManager();
     static void setAssetManager(AAssetManager* am);
+    static const char* getExternalAssetPath();
+    static void setExternalAssetPath(const char* externalAssetPath);
     static jclass getClassID(const char *className, JNIEnv *env=0);
     static bool getStaticMethodInfo(JniMethodInfo &methodinfo, const char *className, const char *methodName, const char *paramCode);
     static bool getMethodInfo(JniMethodInfo &methodinfo, const char *className, const char *methodName, const char *paramCode);
@@ -53,6 +55,7 @@ public:
 private:
     static JavaVM *m_psJavaVM;
     static AAssetManager *m_assetmanager;
+    static std::string m_externalAssetPath;
 };
 
 NS_CC_END
